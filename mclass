@@ -1,0 +1,100 @@
+#!/usr/bin/python3
+
+import sys
+import os
+import re
+
+#Actual program starts here
+#Treat function below as "Main function"
+def createClass(name):
+    createHeaderFile(name)
+    createSourceFile(name)
+
+def createHeaderFile(name):
+    try:
+        with open(name + ".h", 'x') as header:
+            header.write("#pragma once\n\n")
+            header.write("class " + name + " {\n")
+            header.write("\tpublic:\n")
+            header.write("\t\t" + name + "();\n\n")
+            header.write("\tprivate:\n\n")
+            header.write("\tprivate:\n")
+            header.write("};")
+
+    except FileExistsError:
+        printErrorMsg(1, "header")
+        return
+
+    os.system("vim " + name + ".h")
+
+
+def createSourceFile(name):
+    try:
+        with open(name + ".h", 'r') as header:
+            with open(name + ".cpp", 'x') as source:
+                f_dec = extractFunctionDeclarations(header.read())
+                source.write("#include \"" + name + ".h\"\n\n\n\n")
+                createFunctionDefinitions(f_dec, source, name)
+
+    except FileExistsError:
+        printErrorMsg(1, "source")
+        return
+
+def extractFunctionDeclarations(text):
+    pattern = r"[^;{:]*:{2}[^;{]*\([^;]*\)[\sa-z]*;|[^:;}]*\([^;]*\)[\sa-z]*;"
+    return re.findall(pattern, text)
+
+def createFunctionDefinitions(f_dec, source, name):
+    for declaration in f_dec:
+        contents = extractDeclarationContents(declaration)
+        createFunctionDefinition(contents, source, name)
+
+def extractDeclarationContents(declaration):
+    words = r"\([^;]*\)|<[^;]*>|[a-zA-Z0-9_:\~]+"
+    contents = re.findall(words, declaration)
+    return contents;
+
+def createFunctionDefinition(contents, source, name):
+    name_i = -1
+    virtual = 0
+    for i in range(len(contents)):
+        if(contents[i] == "virtual"):
+            virtual = 1
+        elif(contents[i][0] == '('):
+            name_i = i-1
+        elif(contents[i] == "inline"):
+            return
+
+    if(virtual):
+        contents.remove("virtual")
+        name_i -= 1
+    if(name_i == -1):
+        return
+    else:
+        definition = ""
+        for i in range(name_i):
+            definition += contents[i] + " "
+
+        definition += name + "::" + contents[name_i];
+        for i in range(name_i+1, len(contents)):
+            definition += contents[i] + " "
+
+        definition += "{\n}\n\n"
+        source.write(definition)
+
+
+
+
+def printErrorMsg(id, filename = ""):
+    if(id == 0):
+        print("mclass: missing class name")
+    if(id == 1):
+        print("Class " + filename + " file already exists!")
+
+
+if(len(sys.argv) > 1):
+    createClass(str(sys.argv[1]))
+else:
+    printErrorMsg(0)
+
+
